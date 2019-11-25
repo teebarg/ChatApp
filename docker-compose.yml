@@ -1,0 +1,104 @@
+version: '3'
+services:
+
+  #PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravelR_php
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  #Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: laravelR_webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "300:80"
+      - "301:443"
+    volumes:
+      - ./:/var/www
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+
+  #MySQL Service
+  db:
+    image: mysql:5.7.22
+    container_name: laravelR_db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "302:3306"
+    environment:
+      MYSQL_DATABASE: laravelR
+      MYSQL_ROOT_PASSWORD: password
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql/
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network
+  #mongo
+  mongo:
+    image: mongo:3.2
+    container_name: laravelR_mongodb
+    volumes:
+        - mongodata:/data/db
+    ports:
+        - "304:27017"
+    networks:
+      - app-network
+
+  #redis      
+  redis:
+    image: redis:3.2
+    container_name: laravelR_redisdb
+    volumes:
+        - redisdata:/data
+    ports:
+        - "305:6379"
+    command: redis-server --appendonly yes
+    networks:
+      - app-network
+
+  # phpmyadmin
+  phpmyadmin:
+    depends_on:
+      - db
+    image: phpmyadmin/phpmyadmin
+    container_name: laravelR_dbAdmin
+    restart: unless-stopped
+    ports:
+      - '303:80'
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: password 
+    networks:
+      - app-network
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+#Volumes
+volumes:
+  dbdata:
+    driver: local
+  mongodata:
+    driver: local
+  redisdata:
+    driver: local
